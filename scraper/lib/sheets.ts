@@ -12,7 +12,15 @@ export function sheetsClient() {
   return google.sheets({ version: 'v4', auth });
 }
 
-export const SHEET_ID = process.env.SHEET_ID!;
+/**
+ * The connected Google Sheet. Pre-wired here so the project points at the
+ * target spreadsheet out of the box; override per-environment with the
+ * SHEET_ID env var. The ID is not a secret (access is granted by *sharing* the
+ * Sheet with the service account, not by knowing its ID).
+ */
+export const DEFAULT_SHEET_ID = '1cflR5gamM9KAHSvOzZuUElS-VHmRtiAyb7c2Y-Srxac';
+
+export const SHEET_ID = process.env.SHEET_ID || DEFAULT_SHEET_ID;
 
 export const TABS = {
   Products: [

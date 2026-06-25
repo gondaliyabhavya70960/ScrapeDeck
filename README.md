@@ -79,9 +79,12 @@ account** (a robot Google account). Steps:
    credentials → Service account*. Give it a name; no roles needed.
 4. **Create a JSON key** — open the service account → *Keys → Add key → Create
    new key → JSON*. A `service-account.json` downloads. **Treat it like a password.**
-5. **Create the target Google Sheet** (a blank spreadsheet is fine). Copy its ID
-   from the URL: `https://docs.google.com/spreadsheets/d/`**`<SHEET_ID>`**`/edit`.
-   The scraper auto‑creates the `Products` / `PriceHistory` / `Runs` tabs and
+5. **Pick the target Google Sheet.** ScrapeDeck is **pre‑wired to a Sheet** —
+   `DEFAULT_SHEET_ID` in `scraper/lib/sheets.ts`
+   (`1cflR5gamM9KAHSvOzZuUElS-VHmRtiAyb7c2Y-Srxac`). To use a different one,
+   create a blank spreadsheet and set `SHEET_ID` to the long token in its URL:
+   `https://docs.google.com/spreadsheets/d/`**`<SHEET_ID>`**`/edit`. Either way,
+   the scraper auto‑creates the `Products` / `PriceHistory` / `Runs` tabs and
    headers on first run.
 6. **Share the Sheet with the service account** — click *Share* and add the
    service‑account email (looks like `name@project.iam.gserviceaccount.com`) as
@@ -97,8 +100,8 @@ account** (a robot Google account). Steps:
 
    | Variable | Value |
    | --- | --- |
-   | `GOOGLE_SERVICE_ACCOUNT_KEY_B64` | the base64 string from step 7 |
-   | `SHEET_ID` | the ID from step 5 |
+   | `GOOGLE_SERVICE_ACCOUNT_KEY_B64` | the base64 string from step 7 (**required**) |
+   | `SHEET_ID` | optional — only to override the baked‑in connected Sheet |
 
    For **local** runs, put them in a `.env` file (copy `.env.example`).
    For **GitHub Actions**, add them under *Settings → Secrets and variables →
@@ -112,7 +115,8 @@ account** (a robot Google account). Steps:
 `.github/workflows/scrape.yml` runs `pnpm scrape` daily at **02:00 UTC** (~07:30
 IST) and on manual **Run workflow** (`workflow_dispatch`).
 
-Required repo **secrets**: `GOOGLE_SERVICE_ACCOUNT_KEY_B64`, `SHEET_ID`.
+Required repo **secret**: `GOOGLE_SERVICE_ACCOUNT_KEY_B64`. The Sheet is
+pre‑wired (`DEFAULT_SHEET_ID`); add a `SHEET_ID` secret only to override it.
 Optional: `NOTIFY_WEBHOOK_URL` (+ repo **variable** `NOTIFY_WEBHOOK_KIND` =
 `discord` | `slack`) for change/failure pings. Repo **variable**
 `USE_BROWSER=true` enables the Chromium install step (only needed for
