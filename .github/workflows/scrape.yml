@@ -1,0 +1,37 @@
+name: scrape
+
+on:
+  schedule:
+    - cron: "0 2 * * *" # 02:00 UTC daily (~07:30 IST); best-effort, may be delayed near the top of the hour
+  workflow_dispatch: {}
+
+concurrency:
+  group: scrape
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium (only if browser sources are used)
+        if: ${{ vars.USE_BROWSER == 'true' }}
+        run: npx playwright install --with-deps chromium
+
+      - name: Scrape → Google Sheet
+        run: pnpm scrape
+        env:
+          GOOGLE_SERVICE_ACCOUNT_KEY_B64: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY_B64 }}
+          SHEET_ID: ${{ secrets.SHEET_ID }}
+          NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
+          NOTIFY_WEBHOOK_KIND: ${{ vars.NOTIFY_WEBHOOK_KIND }}
