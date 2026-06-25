@@ -31,9 +31,16 @@ const EnvSchema = z
     // Restrict a run to a single source key (fast smoke test): ONLY=rabh.
     ONLY: z.string().min(1).optional(),
 
-    // Optional change/failure notifications.
-    NOTIFY_WEBHOOK_URL: z.string().url().optional(),
-    NOTIFY_WEBHOOK_KIND: z.enum(['discord', 'slack']).optional(),
+    // Optional change/failure notifications. Workflow env passes unset
+    // secrets/vars as empty strings, so coerce '' → undefined before validating.
+    NOTIFY_WEBHOOK_URL: z.preprocess(
+      (v) => (v === '' ? undefined : v),
+      z.string().url().optional(),
+    ),
+    NOTIFY_WEBHOOK_KIND: z.preprocess(
+      (v) => (v === '' ? undefined : v),
+      z.enum(['discord', 'slack']).optional(),
+    ),
 
     // GitHub Actions injects this; used for the run summary table.
     GITHUB_STEP_SUMMARY: z.string().optional(),
