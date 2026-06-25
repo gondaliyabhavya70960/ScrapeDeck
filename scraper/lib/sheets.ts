@@ -89,6 +89,31 @@ export async function ensureTabs(sheets: Sheets, spreadsheetId: string) {
   }
 }
 
+/** Ensure a single named tab exists with the given header row (idempotent). */
+export async function ensureTab(
+  sheets: Sheets,
+  spreadsheetId: string,
+  title: string,
+  headers: string[],
+) {
+  const meta = await sheets.spreadsheets.get({ spreadsheetId });
+  const have = new Set(
+    (meta.data.sheets ?? []).map((s) => s.properties?.title),
+  );
+  if (!have.has(title)) {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: { requests: [{ addSheet: { properties: { title } } }] },
+    });
+  }
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `${title}!A1`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [headers] },
+  });
+}
+
 export async function readRows(
   sheets: Sheets,
   spreadsheetId: string,

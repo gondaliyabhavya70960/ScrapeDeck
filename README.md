@@ -238,6 +238,24 @@ history. `firstSeen` and `vertical` are preserved across runs.
 
 ---
 
+## Catalogue (ResinRiva's own products)
+
+Separate from the competitor monitor, a **`Catalogue`** tab holds ResinRiva's own
+product line in a rich content schema: `title · slug · category · shortTagline ·
+description · priceMin · priceMax · showPrice · timeline · materials · dimensions
+· status · featured · images · imageAlts · fields · seoTitle · seoDescription`
+(`images`/`imageAlts`/`fields` are JSON). The data lives in
+`scraper/lib/catalogue.ts` (original brand content — competitor data is market
+reference only, never copied). Publish/refresh it with:
+
+```bash
+pnpm seed:catalogue        # writes the Catalogue tab (whole-tab overwrite)
+```
+
+or run the **seed-catalogue** GitHub Action (manual dispatch). Extend the
+`catalogue` array and re-run to grow it; image URLs are branded placeholders to
+swap for real product photography.
+
 ## Project structure
 
 ```
