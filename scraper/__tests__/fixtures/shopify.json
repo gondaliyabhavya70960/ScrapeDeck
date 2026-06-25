@@ -1,0 +1,41 @@
+{
+  "products": [
+    {
+      "id": 111,
+      "title": "Epoxy Resin 1kg",
+      "handle": "epoxy-resin-1kg",
+      "vendor": "Tulsi",
+      "product_type": "Resin",
+      "tags": ["clear", "art"],
+      "images": [{ "src": "https://cdn.example.com/epoxy.jpg" }],
+      "variants": [
+        {
+          "id": 9001,
+          "title": "Default Title",
+          "sku": "EP-1",
+          "price": "1200.00",
+          "compare_at_price": "1500.00",
+          "available": true
+        },
+        {
+          "id": 9002,
+          "title": "2kg",
+          "sku": "EP-2",
+          "price": "2200.00",
+          "compare_at_price": null,
+          "available": false
+        }
+      ]
+    },
+    {
+      "id": 222,
+      "title": "Mica Powder Set",
+      "handle": "mica-powder-set",
+      "vendor": "Tulsi",
+      "product_type": "Pigments",
+      "tags": [],
+      "images": [],
+      "variants": []
+    }
+  ]
+}
