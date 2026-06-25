@@ -8,6 +8,7 @@ import {
   overwriteTab,
   appendRows,
   TABS,
+  DEFAULT_SHEET_ID,
 } from './sheets';
 import type { Env } from './env';
 
@@ -141,5 +142,5 @@ export function createStorage(env: Env): Storage {
   if (env.STORAGE_BACKEND === 'local-xlsx') {
     return new LocalXlsxStorage(join(env.DATA_DIR, 'scrapedeck.xlsx'));
   }
-  return new SheetsStorage(env.SHEET_ID!);
+  return new SheetsStorage(env.SHEET_ID || DEFAULT_SHEET_ID);
 }

@@ -17,7 +17,13 @@ const EnvSchema = z
 
     // Required only when STORAGE_BACKEND=google-sheets (checked below).
     GOOGLE_SERVICE_ACCOUNT_KEY_B64: z.string().min(1).optional(),
-    SHEET_ID: z.string().min(1).optional(),
+    // Optional override for the connected Sheet — a default is baked into
+    // sheets.ts (DEFAULT_SHEET_ID), so this only needs setting to target a
+    // different spreadsheet. Empty string is treated as "unset".
+    SHEET_ID: z.preprocess(
+      (v) => (v === '' ? undefined : v),
+      z.string().min(1).optional(),
+    ),
 
     // local-xlsx backend writes here (device copy); default ./data.
     DATA_DIR: z.string().min(1).default('data'),
@@ -42,14 +48,8 @@ const EnvSchema = z
             'Required when STORAGE_BACKEND=google-sheets. Base64-encode your service-account JSON key and set it as a secret.',
         });
       }
-      if (!env.SHEET_ID) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['SHEET_ID'],
-          message:
-            'Required when STORAGE_BACKEND=google-sheets. The spreadsheet ID from its URL.',
-        });
-      }
+      // SHEET_ID is optional: a default (DEFAULT_SHEET_ID) is baked into
+      // sheets.ts, so only the service-account key is strictly required.
     }
     if (env.NOTIFY_WEBHOOK_URL && !env.NOTIFY_WEBHOOK_KIND) {
       ctx.addIssue({
