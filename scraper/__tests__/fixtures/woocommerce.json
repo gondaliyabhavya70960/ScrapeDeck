@@ -1,0 +1,34 @@
+[
+  {
+    "id": 5,
+    "name": "Resin Art Kit",
+    "permalink": "https://canvasbypriya.in/product/resin-art-kit",
+    "sku": "RAK-5",
+    "prices": {
+      "price": "15000",
+      "regular_price": "20000",
+      "sale_price": "15000",
+      "currency_code": "INR",
+      "currency_minor_unit": 2
+    },
+    "images": [{ "src": "https://canvasbypriya.in/img/rak.jpg" }],
+    "categories": [{ "name": "Kits" }],
+    "is_in_stock": true
+  },
+  {
+    "id": 6,
+    "name": "Pigment Paste",
+    "permalink": "https://canvasbypriya.in/product/pigment-paste",
+    "sku": "",
+    "prices": {
+      "price": "50000",
+      "regular_price": "50000",
+      "sale_price": "",
+      "currency_code": "INR",
+      "currency_minor_unit": 2
+    },
+    "images": [],
+    "categories": [],
+    "is_in_stock": false
+  }
+]
