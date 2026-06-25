@@ -1,0 +1,25 @@
+name: seed-catalogue
+
+on:
+  workflow_dispatch: {}
+
+concurrency:
+  group: seed-catalogue
+  cancel-in-progress: false
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Seed Catalogue → Google Sheet
+        run: pnpm seed:catalogue
+        env:
+          GOOGLE_SERVICE_ACCOUNT_KEY_B64: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY_B64 }}
+          SHEET_ID: ${{ secrets.SHEET_ID }}
