@@ -46,7 +46,7 @@ export function ChangesFeed({
       if (srcSet.size && !srcSet.has(c.source)) return false;
       if (kind === 'up') return c.direction === 'up';
       if (kind === 'down') return c.direction === 'down';
-      if (kind === 'stock') return c.newAvailability != null;
+      if (kind === 'stock') return c.newStatus != null;
       return true;
     });
     const byDay = new Map<string, ChangeEvent[]>();

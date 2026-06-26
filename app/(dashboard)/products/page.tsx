@@ -34,8 +34,8 @@ export default async function ProductsPage({
     if (!keys.has(key)) continue;
     (historyByKey[key] ??= []).push({
       t: h.timestamp,
-      price: h.price,
-      availability: h.availability,
+      price: h.priceMin,
+      status: h.status,
     });
   }
   for (const k of Object.keys(historyByKey)) {

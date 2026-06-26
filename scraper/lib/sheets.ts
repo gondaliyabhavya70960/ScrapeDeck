@@ -24,18 +24,28 @@ export const SHEET_ID = process.env.SHEET_ID || DEFAULT_SHEET_ID;
 
 export const TABS = {
   Products: [
-    'source',
+    'sourceKey',
     'vertical',
     'externalId',
     'title',
-    'brand',
-    'sku',
+    'slug',
     'category',
+    'shortTagline',
+    'description',
+    'priceMin',
+    'priceMax',
     'currency',
-    'price',
-    'originalPrice',
-    'availability',
-    'imageUrl',
+    'showPrice',
+    'timeline',
+    'materials',
+    'dimensions',
+    'status',
+    'featured',
+    'images',
+    'imageAlts',
+    'fields',
+    'seoTitle',
+    'seoDescription',
     'url',
     'firstSeen',
     'lastSeen',
@@ -44,13 +54,13 @@ export const TABS = {
   ],
   PriceHistory: [
     'timestamp',
-    'source',
+    'sourceKey',
     'externalId',
     'title',
     'currency',
-    'price',
-    'originalPrice',
-    'availability',
+    'priceMin',
+    'priceMax',
+    'status',
   ],
   Runs: [
     'timestamp',
@@ -121,7 +131,7 @@ export async function readRows(
 ): Promise<string[][]> {
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `${tab}!A2:Z`,
+    range: `${tab}!A2:AZ`,
   });
   return (res.data.values as string[][]) ?? [];
 }
@@ -134,7 +144,7 @@ export async function overwriteTab(
 ) {
   await sheets.spreadsheets.values.clear({
     spreadsheetId,
-    range: `${tab}!A2:Z`,
+    range: `${tab}!A2:AZ`,
   });
   if (rows.length)
     await sheets.spreadsheets.values.update({

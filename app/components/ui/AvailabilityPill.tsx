@@ -1,8 +1,10 @@
 import { cn } from '@/lib/format';
-import { availabilityLabel } from '@/lib/format';
+import { statusLabel } from '@/lib/format';
 
+/** Stock pill. Accepts the rich-schema status ('active' | 'out_of_stock') and
+ *  the legacy availability codes ('in_stock' | 'out_of_stock'). */
 export function AvailabilityPill({ value }: { value: string | null }) {
-  const inStock = value === 'in_stock';
+  const inStock = value === 'active' || value === 'in_stock';
   const outStock = value === 'out_of_stock';
   return (
     <span
@@ -23,7 +25,7 @@ export function AvailabilityPill({ value }: { value: string | null }) {
         )}
         aria-hidden
       />
-      {availabilityLabel(value)}
+      {statusLabel(value)}
     </span>
   );
 }

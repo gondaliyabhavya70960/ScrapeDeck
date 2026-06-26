@@ -4,10 +4,13 @@
       "id": 111,
       "title": "Epoxy Resin 1kg",
       "handle": "epoxy-resin-1kg",
+      "body_html": "<p>Clear <strong>epoxy</strong> resin for art &amp; craft.</p>",
       "vendor": "Tulsi",
       "product_type": "Resin",
       "tags": ["clear", "art"],
-      "images": [{ "src": "https://cdn.example.com/epoxy.jpg" }],
+      "images": [
+        { "src": "https://cdn.example.com/epoxy.jpg", "alt": "Epoxy bottle" }
+      ],
       "variants": [
         {
           "id": 9001,
@@ -31,6 +34,7 @@
       "id": 222,
       "title": "Mica Powder Set",
       "handle": "mica-powder-set",
+      "body_html": "",
       "vendor": "Tulsi",
       "product_type": "Pigments",
       "tags": [],

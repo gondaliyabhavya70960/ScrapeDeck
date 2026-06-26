@@ -31,6 +31,18 @@ const EnvSchema = z
     // Restrict a run to a single source key (fast smoke test): ONLY=rabh.
     ONLY: z.string().min(1).optional(),
 
+    // Optional SEO/meta enrichment pass (fetches one HTML page per selected
+    // product — slow, so default OFF). off | all | featured | <number cap/source>.
+    ENRICH: z.preprocess(
+      (v) => (v === '' || v == null ? undefined : v),
+      z.string().default('off'),
+    ),
+    // Extra politeness delay between enrichment fetches (ms).
+    ENRICH_DELAY_MS: z.preprocess(
+      (v) => (v === '' || v == null ? undefined : v),
+      z.coerce.number().int().min(0).default(800),
+    ),
+
     // Optional change/failure notifications. Workflow env passes unset
     // secrets/vars as empty strings, so coerce '' → undefined before validating.
     NOTIFY_WEBHOOK_URL: z.preprocess(

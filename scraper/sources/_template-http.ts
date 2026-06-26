@@ -59,9 +59,14 @@ export function templateHttpSource(cfg: {
             externalId,
             url: href,
             title,
-            imageUrl: img,
+            slug: externalId,
             currency,
-            price,
+            priceMin: price,
+            priceMax: price,
+            showPrice: price != null && price > 0,
+            status: 'active',
+            images: img ? [img] : [],
+            imageAlts: [],
           });
         });
 

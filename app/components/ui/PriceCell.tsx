@@ -1,15 +1,18 @@
-import { cn, formatPrice } from '@/lib/format';
+import { cn, formatPriceRange } from '@/lib/format';
 import { DeltaBadge } from './DeltaBadge';
 import type { PriceDelta } from '@/lib/types';
 
 export function PriceCell({
   price,
+  max,
   currency,
   delta,
   className,
   showDelta = true,
 }: {
   price: number | null;
+  /** Upper bound of the price range; renders "min–max" when it exceeds price. */
+  max?: number | null;
   currency: string;
   delta?: PriceDelta | null;
   className?: string;
@@ -21,7 +24,7 @@ export function PriceCell({
         <DeltaBadge direction={delta.direction} pct={delta.pct} />
       ) : null}
       <span className="font-mono text-sm font-medium tabular text-ink">
-        {formatPrice(price, currency)}
+        {formatPriceRange(price, max, currency)}
       </span>
     </div>
   );

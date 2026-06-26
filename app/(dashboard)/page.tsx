@@ -48,10 +48,10 @@ export default async function OverviewPage({
   const changes = filterByVertical(data.changes, vertical);
   const today = dayKey(new Date().toISOString());
 
-  const priced = products.filter((p) => p.price != null);
+  const priced = products.filter((p) => p.priceMin != null);
   const avgPrice =
     priced.length > 0
-      ? priced.reduce((a, p) => a + (p.price ?? 0), 0) / priced.length
+      ? priced.reduce((a, p) => a + (p.priceMin ?? 0), 0) / priced.length
       : null;
   const currency = priced[0]?.currency ?? 'INR';
   const sourceCount = new Set(products.map((p) => p.source)).size;

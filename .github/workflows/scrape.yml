@@ -35,3 +35,7 @@ jobs:
           SHEET_ID: ${{ secrets.SHEET_ID }}
           NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
           NOTIFY_WEBHOOK_KIND: ${{ vars.NOTIFY_WEBHOOK_KIND }}
+          # Optional SEO enrichment — leave unset/off unless you want the slow,
+          # one-HTML-page-per-product pass. off | all | featured | <number>.
+          ENRICH: ${{ vars.ENRICH }}
+          ENRICH_DELAY_MS: ${{ vars.ENRICH_DELAY_MS }}

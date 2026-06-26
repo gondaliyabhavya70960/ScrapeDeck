@@ -11,45 +11,37 @@ describe('shopifySource', () => {
     vertical: 'resin',
   });
 
-  it('emits one row per variant and one row for variant-less products', async () => {
+  it('emits one row per product (not per variant)', async () => {
     const products = await adapter.scrape(fakeContext(fixture));
-    // 2 variants for product 111 + 1 variant-less product 222.
-    expect(products).toHaveLength(3);
+    expect(products).toHaveLength(2);
   });
 
-  it('keys variants as `${productId}:${variantId}` and builds product URLs', async () => {
+  it('collapses variant prices into priceMin/priceMax and builds url + slug', async () => {
     const products = await adapter.scrape(fakeContext(fixture));
-    const v1 = products.find((p) => p.externalId === '111:9001');
-    expect(v1).toBeDefined();
-    expect(v1!.url).toBe('https://tulsiresin.com/products/epoxy-resin-1kg');
-    expect(v1!.price).toBe(1200);
-    expect(v1!.originalPrice).toBe(1500);
-    expect(v1!.availability).toBe('in_stock');
-    expect(v1!.brand).toBe('Tulsi');
-    expect(v1!.category).toBe('Resin');
+    const p = products.find((x) => x.externalId === '111')!;
+    expect(p).toBeDefined();
+    expect(p.url).toBe('https://tulsiresin.com/products/epoxy-resin-1kg');
+    expect(p.slug).toBe('epoxy-resin-1kg');
+    expect(p.priceMin).toBe(1200);
+    expect(p.priceMax).toBe(2200);
+    expect(p.showPrice).toBe(true);
+    expect(p.category).toBe('Resin');
+    expect(p.images).toContain('https://cdn.example.com/epoxy.jpg');
+    expect(p.imageAlts).toContain('Epoxy bottle');
+    expect(p.description).toContain('epoxy');
+    expect(p.fields?.vendor).toBe('Tulsi');
   });
 
-  it('omits the "Default Title" suffix but keeps named variants', async () => {
+  it('marks a product active when any variant is available', async () => {
     const products = await adapter.scrape(fakeContext(fixture));
-    expect(products.find((p) => p.externalId === '111:9001')!.title).toBe(
-      'Epoxy Resin 1kg',
-    );
-    expect(products.find((p) => p.externalId === '111:9002')!.title).toBe(
-      'Epoxy Resin 1kg — 2kg',
-    );
+    expect(products.find((x) => x.externalId === '111')!.status).toBe('active');
   });
 
-  it('marks unavailable variants out_of_stock and skips null compare_at_price', async () => {
+  it('marks a variant-less product out_of_stock with no price', async () => {
     const products = await adapter.scrape(fakeContext(fixture));
-    const v2 = products.find((p) => p.externalId === '111:9002')!;
-    expect(v2.availability).toBe('out_of_stock');
-    expect(v2.originalPrice).toBeUndefined();
-  });
-
-  it('represents a variant-less product without a price', async () => {
-    const products = await adapter.scrape(fakeContext(fixture));
-    const bare = products.find((p) => p.externalId === '222')!;
-    expect(bare.price).toBeUndefined();
+    const bare = products.find((x) => x.externalId === '222')!;
+    expect(bare.status).toBe('out_of_stock');
+    expect(bare.priceMin).toBeUndefined();
     expect(bare.title).toBe('Mica Powder Set');
   });
 });

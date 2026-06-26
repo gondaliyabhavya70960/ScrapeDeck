@@ -9,24 +9,34 @@ export interface PriceDelta {
 
 export interface Product {
   key: string; // `${source}|${externalId}`
-  source: string;
+  source: string; // the source key
   vertical: string;
   externalId: string;
   title: string;
-  brand: string;
-  sku: string;
+  slug: string;
   category: string;
+  shortTagline: string;
+  description: string;
+  priceMin: number | null;
+  priceMax: number | null;
   currency: string;
-  price: number | null;
-  originalPrice: number | null;
-  availability: string;
-  imageUrl: string;
+  showPrice: boolean;
+  timeline: string;
+  materials: string;
+  dimensions: string;
+  status: string; // active | out_of_stock
+  featured: boolean;
+  images: string[];
+  imageAlts: string[];
+  fields: Record<string, string>;
+  seoTitle: string;
+  seoDescription: string;
   url: string;
   firstSeen: string;
   lastSeen: string;
   lastChanged: string;
   contentHash: string;
-  /** Price movement since the previous recorded change, if any. */
+  /** Movement on priceMin since the previous recorded change, if any. */
   delta: PriceDelta | null;
 }
 
@@ -36,9 +46,9 @@ export interface HistoryPoint {
   externalId: string;
   title: string;
   currency: string;
-  price: number | null;
-  originalPrice: number | null;
-  availability: string;
+  priceMin: number | null;
+  priceMax: number | null;
+  status: string;
 }
 
 export type RunStatus = 'ok' | 'partial' | 'failed';
@@ -69,8 +79,8 @@ export interface ChangeEvent {
   newPrice: number | null;
   pct: number | null;
   direction: 'up' | 'down' | null;
-  oldAvailability: string | null;
-  newAvailability: string | null;
+  oldStatus: string | null;
+  newStatus: string | null;
 }
 
 export interface DashboardData {

@@ -13,23 +13,33 @@ function localEnv(): Env {
 }
 
 const productRow = [
-  'rabh',
-  'resin',
-  '1',
-  'Resin 1kg',
-  '',
-  'SKU1',
-  'Resin',
-  'INR',
-  100,
-  150,
-  'in_stock',
-  '',
-  'https://www.rabh.in/products/p1',
-  't1',
-  't1',
-  't1',
-  'abc123',
+  'rabh', // sourceKey
+  'resin', // vertical
+  '1', // externalId
+  'Resin 1kg', // title
+  'p1', // slug
+  'Resin', // category
+  'Pour-ready kit', // shortTagline
+  'A clear pour resin.', // description
+  100, // priceMin
+  150, // priceMax
+  'INR', // currency
+  'TRUE', // showPrice
+  '', // timeline
+  '', // materials
+  '', // dimensions
+  'active', // status
+  'FALSE', // featured
+  'https://www.rabh.in/img/p1.jpg', // images
+  '', // imageAlts
+  '{}', // fields
+  '', // seoTitle
+  '', // seoDescription
+  'https://www.rabh.in/products/p1', // url
+  't1', // firstSeen
+  't1', // lastSeen
+  't1', // lastChanged
+  'abc123', // contentHash
 ];
 
 describe('LocalXlsxStorage (backs `pnpm export` + STORAGE_BACKEND=local-xlsx)', () => {

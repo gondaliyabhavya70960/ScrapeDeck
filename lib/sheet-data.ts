@@ -18,29 +18,56 @@ const num = (s: string | undefined): number | null => {
   return Number.isFinite(n) ? n : null;
 };
 const str = (s: string | undefined): string => (s == null ? '' : String(s));
+const splitList = (s: string | undefined): string[] =>
+  s == null || s === ''
+    ? []
+    : s
+        .split(' | ')
+        .map((x) => x.trim())
+        .filter(Boolean);
+const parseBool = (s: string | undefined): boolean => /^true$/i.test(s ?? '');
+const parseFields = (s: string | undefined): Record<string, string> => {
+  if (!s) return {};
+  try {
+    const o = JSON.parse(s);
+    return o && typeof o === 'object' ? (o as Record<string, string>) : {};
+  } catch {
+    return {};
+  }
+};
 
 function parseProducts(rows: string[][]): Product[] {
   return rows
-    .filter((r) => r[0] && r[2]) // need source + externalId
+    .filter((r) => r[0] && r[2]) // need sourceKey + externalId
     .map((r) => ({
       key: `${r[0]}|${r[2]}`,
       source: str(r[0]),
       vertical: str(r[1]) || 'resin',
       externalId: str(r[2]),
       title: str(r[3]),
-      brand: str(r[4]),
-      sku: str(r[5]),
-      category: str(r[6]),
-      currency: str(r[7]) || 'INR',
-      price: num(r[8]),
-      originalPrice: num(r[9]),
-      availability: str(r[10]),
-      imageUrl: str(r[11]),
-      url: str(r[12]),
-      firstSeen: str(r[13]),
-      lastSeen: str(r[14]),
-      lastChanged: str(r[15]),
-      contentHash: str(r[16]),
+      slug: str(r[4]),
+      category: str(r[5]),
+      shortTagline: str(r[6]),
+      description: str(r[7]),
+      priceMin: num(r[8]),
+      priceMax: num(r[9]),
+      currency: str(r[10]) || 'INR',
+      showPrice: parseBool(r[11]),
+      timeline: str(r[12]),
+      materials: str(r[13]),
+      dimensions: str(r[14]),
+      status: str(r[15]),
+      featured: parseBool(r[16]),
+      images: splitList(r[17]),
+      imageAlts: splitList(r[18]),
+      fields: parseFields(r[19]),
+      seoTitle: str(r[20]),
+      seoDescription: str(r[21]),
+      url: str(r[22]),
+      firstSeen: str(r[23]),
+      lastSeen: str(r[24]),
+      lastChanged: str(r[25]),
+      contentHash: str(r[26]),
       delta: null as PriceDelta | null,
     }));
 }
@@ -54,9 +81,9 @@ function parseHistory(rows: string[][]): HistoryPoint[] {
       externalId: str(r[2]),
       title: str(r[3]),
       currency: str(r[4]) || 'INR',
-      price: num(r[5]),
-      originalPrice: num(r[6]),
-      availability: str(r[7]),
+      priceMin: num(r[5]),
+      priceMax: num(r[6]),
+      status: str(r[7]),
     }))
     .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
 }
@@ -77,14 +104,14 @@ function parseRuns(rows: string[][]): Run[] {
     .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 }
 
-/** Price movement since the previous *different* recorded price. */
+/** Price movement since the previous *different* recorded priceMin. */
 function computeDelta(
   current: number | null,
   hist: HistoryPoint[],
 ): PriceDelta | null {
   if (current == null) return null;
   for (let i = hist.length - 1; i >= 0; i--) {
-    const p = hist[i]!.price;
+    const p = hist[i]!.priceMin;
     if (p != null && p !== current) {
       const amount = current - p;
       const pct = p !== 0 ? (amount / p) * 100 : 0;
@@ -109,18 +136,18 @@ function buildChanges(
     for (let i = 1; i < hist.length; i++) {
       const prev = hist[i - 1]!;
       const cur = hist[i]!;
-      const priceChanged = prev.price !== cur.price;
-      const availChanged = prev.availability !== cur.availability;
-      if (!priceChanged && !availChanged) continue;
+      const priceChanged = prev.priceMin !== cur.priceMin;
+      const statusChanged = prev.status !== cur.status;
+      if (!priceChanged && !statusChanged) continue;
 
       const p = products.get(key);
       const amount =
-        priceChanged && prev.price != null && cur.price != null
-          ? cur.price - prev.price
+        priceChanged && prev.priceMin != null && cur.priceMin != null
+          ? cur.priceMin - prev.priceMin
           : null;
       const pct =
-        amount != null && prev.price
-          ? (amount / prev.price) * 100
+        amount != null && prev.priceMin
+          ? (amount / prev.priceMin) * 100
           : null;
 
       out.push({
@@ -131,15 +158,15 @@ function buildChanges(
         vertical: p?.vertical ?? 'resin',
         externalId: cur.externalId,
         title: p?.title ?? cur.title,
-        imageUrl: p?.imageUrl ?? '',
+        imageUrl: p?.images?.[0] ?? '',
         url: p?.url ?? '',
         currency: cur.currency,
-        oldPrice: priceChanged ? prev.price : null,
-        newPrice: priceChanged ? cur.price : null,
+        oldPrice: priceChanged ? prev.priceMin : null,
+        newPrice: priceChanged ? cur.priceMin : null,
         pct,
         direction: amount == null ? null : amount >= 0 ? 'up' : 'down',
-        oldAvailability: availChanged ? prev.availability : null,
-        newAvailability: availChanged ? cur.availability : null,
+        oldStatus: statusChanged ? prev.status : null,
+        newStatus: statusChanged ? cur.status : null,
       });
     }
   }
@@ -185,7 +212,7 @@ async function loadDashboard(): Promise<LoadResult> {
 
     const productMap = new Map<string, Product>();
     for (const p of products) {
-      p.delta = computeDelta(p.price, byKey.get(p.key) ?? []);
+      p.delta = computeDelta(p.priceMin, byKey.get(p.key) ?? []);
       productMap.set(p.key, p);
     }
 

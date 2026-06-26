@@ -1,28 +1,28 @@
 import type { SourceAdapter, ScrapedProduct, ScrapeContext } from '../types';
+import { stripHtml } from '../lib/normalize';
 
-interface ShopifyVariant {
-  id: number;
-  title: string;
-  sku: string | null;
+interface SVariant {
   price: string;
   compare_at_price: string | null;
   available: boolean;
 }
-interface ShopifyImage {
+interface SImage {
   src: string;
+  alt: string | null;
 }
-interface ShopifyProduct {
+interface SProduct {
   id: number;
   title: string;
   handle: string;
+  body_html: string;
   vendor: string;
   product_type: string;
   tags: string[];
-  variants: ShopifyVariant[];
-  images: ShopifyImage[];
+  variants: SVariant[];
+  images: SImage[];
 }
 interface ProductsJson {
-  products: ShopifyProduct[];
+  products: SProduct[];
 }
 
 export function shopifySource(cfg: {
@@ -35,11 +35,12 @@ export function shopifySource(cfg: {
 }): SourceAdapter {
   const base = cfg.baseUrl.replace(/\/+$/, '');
   const currency = cfg.currency ?? 'INR';
+  const vertical = cfg.vertical ?? 'resin';
   return {
     key: cfg.key,
     name: cfg.name,
     baseUrl: base,
-    vertical: cfg.vertical ?? 'resin',
+    vertical,
     enabled: cfg.enabled ?? true,
     mode: 'http',
     async scrape(ctx: ScrapeContext): Promise<ScrapedProduct[]> {
@@ -47,46 +48,48 @@ export function shopifySource(cfg: {
       const PER_PAGE = 250,
         MAX_PAGES = 200;
       for (let page = 1; page <= MAX_PAGES; page++) {
-        const url = `${base}/products.json?limit=${PER_PAGE}&page=${page}`;
-        const data = await ctx.limit(() => ctx.getJson<ProductsJson>(url));
+        const data = await ctx.limit(() =>
+          ctx.getJson<ProductsJson>(
+            `${base}/products.json?limit=${PER_PAGE}&page=${page}`,
+          ),
+        );
         const products = data.products ?? [];
         if (products.length === 0) break;
         for (const p of products) {
-          const productUrl = `${base}/products/${p.handle}`;
-          const imageUrl = p.images?.[0]?.src;
-          const variants = p.variants ?? [];
-          if (variants.length === 0) {
-            out.push({
-              externalId: String(p.id),
-              url: productUrl,
-              title: p.title,
-              brand: p.vendor || undefined,
-              category: p.product_type || undefined,
-              imageUrl,
-              currency,
-            });
-            continue;
-          }
-          for (const v of variants) {
-            const vt =
-              v.title && v.title !== 'Default Title' ? ` — ${v.title}` : '';
-            out.push({
-              externalId: `${p.id}:${v.id}`,
-              url: productUrl,
-              title: `${p.title}${vt}`,
-              brand: p.vendor || undefined,
-              sku: v.sku || undefined,
-              category: p.product_type || undefined,
-              imageUrl,
-              currency,
-              price: v.price != null ? Number(v.price) : undefined,
-              originalPrice:
-                v.compare_at_price != null
-                  ? Number(v.compare_at_price)
-                  : undefined,
-              availability: v.available ? 'in_stock' : 'out_of_stock',
-            });
-          }
+          const prices = (p.variants ?? [])
+            .map((v) => Number(v.price))
+            .filter((n) => !Number.isNaN(n));
+          const priceMin = prices.length ? Math.min(...prices) : undefined;
+          const priceMax = prices.length ? Math.max(...prices) : undefined;
+          const inStock = (p.variants ?? []).some((v) => v.available);
+          out.push({
+            externalId: String(p.id),
+            url: `${base}/products/${p.handle}`,
+            vertical,
+            currency,
+            title: p.title,
+            slug: p.handle,
+            category: p.product_type || p.tags?.[0] || undefined,
+            description: stripHtml(p.body_html),
+            shortTagline: undefined, // enrichment may fill
+            priceMin,
+            priceMax,
+            showPrice: priceMin != null && priceMin > 0,
+            status: inStock ? 'active' : 'out_of_stock',
+            featured: (p.tags ?? []).some((t) => /feature/i.test(t)),
+            images: (p.images ?? []).map((i) => i.src),
+            imageAlts: (p.images ?? []).map((i) => i.alt ?? ''),
+            fields: {
+              vendor: p.vendor ?? '',
+              productType: p.product_type ?? '',
+              tags: (p.tags ?? []).join(', '),
+            },
+            materials: undefined,
+            dimensions: undefined,
+            timeline: undefined,
+            seoTitle: undefined,
+            seoDescription: undefined,
+          });
         }
         ctx.log(`[${cfg.key}] page ${page}: ${products.length}`);
         if (products.length < PER_PAGE) break;

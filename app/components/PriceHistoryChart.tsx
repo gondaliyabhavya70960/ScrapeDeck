@@ -14,7 +14,7 @@ import { formatPrice } from '@/lib/format';
 export interface PricePoint {
   t: string;
   price: number | null;
-  availability: string;
+  status: string;
 }
 
 export function PriceHistoryChart({

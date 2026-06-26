@@ -12,18 +12,18 @@ function filterProducts(products: Product[], sp: URLSearchParams): Product[] {
   const q = (sp.get('q') ?? '').toLowerCase();
   const srcSet = new Set((sp.get('source') ?? '').split(',').filter(Boolean));
   const category = sp.get('category') ?? 'all';
-  const availability = sp.get('availability') ?? 'all';
+  const status = sp.get('availability') ?? 'all';
   const changed = sp.get('changed') === '1';
   const now = Date.now();
 
   return products.filter((p) => {
     if (q) {
-      const hay = `${p.title} ${p.sku} ${p.brand} ${p.category}`.toLowerCase();
+      const hay = `${p.title} ${p.shortTagline} ${p.category}`.toLowerCase();
       if (!hay.includes(q)) return false;
     }
     if (srcSet.size && !srcSet.has(p.source)) return false;
     if (category !== 'all' && p.category !== category) return false;
-    if (availability !== 'all' && p.availability !== availability) return false;
+    if (status !== 'all' && p.status !== status) return false;
     if (changed) {
       const t = Date.parse(p.lastChanged);
       if (Number.isNaN(t) || now - t > DAY_MS) return false;
@@ -37,13 +37,14 @@ function productAoa(products: Product[]): (string | number)[][] {
     'Source',
     'Vertical',
     'Title',
-    'Brand',
-    'SKU',
     'Category',
+    'Tagline',
+    'Price min',
+    'Price max',
     'Currency',
-    'Price',
-    'Original',
-    'Availability',
+    'Status',
+    'Materials',
+    'Dimensions',
     'Change %',
     'URL',
     'First seen',
@@ -53,13 +54,14 @@ function productAoa(products: Product[]): (string | number)[][] {
     p.source,
     p.vertical,
     p.title,
-    p.brand,
-    p.sku,
     p.category,
+    p.shortTagline,
+    p.priceMin ?? '',
+    p.priceMax ?? '',
     p.currency,
-    p.price ?? '',
-    p.originalPrice ?? '',
-    p.availability,
+    p.status,
+    p.materials,
+    p.dimensions,
     p.delta ? formatPct(p.delta.pct) : '',
     p.url,
     p.firstSeen,
@@ -77,8 +79,8 @@ function changesAoa(changes: ChangeEvent[]): (string | number)[][] {
     'New price',
     'Change %',
     'Direction',
-    'Old stock',
-    'New stock',
+    'Old status',
+    'New status',
     'URL',
   ];
   const rows = changes.map((c) => [
@@ -89,8 +91,8 @@ function changesAoa(changes: ChangeEvent[]): (string | number)[][] {
     c.newPrice ?? '',
     c.pct != null ? formatPct(c.pct) : '',
     c.direction ?? '',
-    c.oldAvailability ?? '',
-    c.newAvailability ?? '',
+    c.oldStatus ?? '',
+    c.newStatus ?? '',
     c.url,
   ]);
   return [header, ...rows];

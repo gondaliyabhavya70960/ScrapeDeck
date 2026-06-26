@@ -2,33 +2,42 @@
   {
     "id": 5,
     "name": "Resin Art Kit",
+    "slug": "resin-art-kit",
     "permalink": "https://canvasbypriya.in/product/resin-art-kit",
-    "sku": "RAK-5",
+    "short_description": "<p>Everything to start.</p>",
+    "description": "<p>A complete <em>resin</em> art starter kit.</p>",
     "prices": {
       "price": "15000",
       "regular_price": "20000",
-      "sale_price": "15000",
       "currency_code": "INR",
-      "currency_minor_unit": 2
+      "currency_minor_unit": 2,
+      "price_range": null
     },
-    "images": [{ "src": "https://canvasbypriya.in/img/rak.jpg" }],
+    "images": [{ "src": "https://canvasbypriya.in/img/rak.jpg", "alt": "Kit" }],
     "categories": [{ "name": "Kits" }],
+    "attributes": [
+      { "name": "Material", "terms": [{ "name": "Epoxy" }] },
+      { "name": "Size", "terms": [{ "name": "A4" }] }
+    ],
     "is_in_stock": true
   },
   {
     "id": 6,
     "name": "Pigment Paste",
+    "slug": "pigment-paste",
     "permalink": "https://canvasbypriya.in/product/pigment-paste",
-    "sku": "",
+    "short_description": "",
+    "description": "",
     "prices": {
       "price": "50000",
       "regular_price": "50000",
-      "sale_price": "",
       "currency_code": "INR",
-      "currency_minor_unit": 2
+      "currency_minor_unit": 2,
+      "price_range": { "min_amount": "50000", "max_amount": "80000" }
     },
     "images": [],
     "categories": [],
+    "attributes": [],
     "is_in_stock": false
   }
 ]
