@@ -8,7 +8,7 @@ import type { ChangeEvent } from '@/lib/types';
 
 export function ChangeRow({ change: c }: { change: ChangeEvent }) {
   const priceChange = c.oldPrice != null || c.newPrice != null;
-  const availChange = c.oldAvailability != null || c.newAvailability != null;
+  const availChange = c.oldStatus != null || c.newStatus != null;
 
   return (
     <div className="flex items-center gap-3 py-2.5">
@@ -52,9 +52,9 @@ export function ChangeRow({ change: c }: { change: ChangeEvent }) {
           </>
         ) : availChange ? (
           <div className="flex items-center gap-1.5">
-            <AvailabilityPill value={c.oldAvailability} />
+            <AvailabilityPill value={c.oldStatus} />
             <ArrowRight size={12} className="text-faint" />
-            <AvailabilityPill value={c.newAvailability} />
+            <AvailabilityPill value={c.newStatus} />
           </div>
         ) : null}
       </div>

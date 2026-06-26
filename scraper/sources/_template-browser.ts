@@ -54,13 +54,20 @@ export function templateBrowserSource(cfg: {
 
         for (const it of items) {
           if (!it.title || !it.href) continue;
+          const externalId = it.href.split('/').filter(Boolean).pop() ?? it.href;
+          const price = Number(it.priceText.replace(/[^0-9.]/g, '')) || undefined;
           out.push({
-            externalId: it.href.split('/').filter(Boolean).pop() ?? it.href,
+            externalId,
             url: it.href,
             title: it.title,
-            imageUrl: it.imageUrl || undefined,
+            slug: externalId,
             currency,
-            price: Number(it.priceText.replace(/[^0-9.]/g, '')) || undefined,
+            priceMin: price,
+            priceMax: price,
+            showPrice: price != null && price > 0,
+            status: 'active',
+            images: it.imageUrl ? [it.imageUrl] : [],
+            imageAlts: [],
           });
         }
         ctx.log(`[${cfg.key}] extracted ${out.length}`);

@@ -24,6 +24,22 @@ export function formatPrice(
   return symbol ? `${symbol}${body}` : `${body} ${currency}`;
 }
 
+/**
+ * Format a price range. Collapses to a single price when min == max (or one
+ * side is missing); otherwise "₹2,499–₹5,999".
+ */
+export function formatPriceRange(
+  min: number | null | undefined,
+  max: number | null | undefined,
+  currency = 'INR',
+): string {
+  if (min == null && max == null) return '—';
+  if (min != null && max != null && max > min) {
+    return `${formatPrice(min, currency)}–${formatPrice(max, currency)}`;
+  }
+  return formatPrice(min ?? max, currency);
+}
+
 /** Signed percentage, e.g. +12.5% / −8%. */
 export function formatPct(pct: number | null | undefined): string {
   if (pct == null || !Number.isFinite(pct)) return '—';
@@ -100,6 +116,25 @@ export function availabilityLabel(a: string | null | undefined): string {
       return 'Unknown';
     default:
       return a;
+  }
+}
+
+/** Human label for a product status (rich schema: active | out_of_stock | draft). */
+export function statusLabel(s: string | null | undefined): string {
+  switch (s) {
+    case 'active':
+    case 'in_stock':
+      return 'In stock';
+    case 'out_of_stock':
+      return 'Out of stock';
+    case 'draft':
+      return 'Draft';
+    case '':
+    case null:
+    case undefined:
+      return 'Unknown';
+    default:
+      return s;
   }
 }
 

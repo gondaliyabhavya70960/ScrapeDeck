@@ -1,7 +1,16 @@
 'use client';
 
 import { useEffect } from 'react';
-import { X, ExternalLink, Tag, Boxes, Clock, Calendar } from 'lucide-react';
+import {
+  X,
+  ExternalLink,
+  Boxes,
+  Clock,
+  Calendar,
+  Layers,
+  Ruler,
+  CalendarClock,
+} from 'lucide-react';
 import { Thumbnail } from './ui/Thumbnail';
 import { SourceBadge } from './ui/SourceBadge';
 import { DeltaBadge } from './ui/DeltaBadge';
@@ -9,6 +18,7 @@ import { AvailabilityPill } from './ui/AvailabilityPill';
 import { PriceHistoryChart, type PricePoint } from './PriceHistoryChart';
 import {
   formatPrice,
+  formatPriceRange,
   formatDate,
   formatRelative,
   verticalLabel,
@@ -55,12 +65,9 @@ export function ProductDrawer({
   }, [product, onClose]);
 
   if (!product) return null;
-  const discounted =
-    product.originalPrice != null &&
-    product.price != null &&
-    product.originalPrice > product.price;
 
   const recent = [...history].reverse().slice(0, 12);
+  const gallery = product.images.slice(0, 6);
 
   return (
     <div className="fixed inset-0 z-50">
@@ -91,7 +98,7 @@ export function ProductDrawer({
         <div className="flex flex-col gap-5 p-5">
           <div className="flex gap-4">
             <Thumbnail
-              src={product.imageUrl}
+              src={product.images[0]}
               alt={product.title}
               size={96}
               className="rounded-card"
@@ -100,26 +107,48 @@ export function ProductDrawer({
               <h2 className="text-base font-semibold leading-snug text-ink">
                 {product.title}
               </h2>
+              {product.shortTagline ? (
+                <p className="mt-1 text-xs text-muted">{product.shortTagline}</p>
+              ) : null}
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <SourceBadge source={product.source} />
                 <span className="rounded-pill bg-surface-2 px-2 py-0.5 text-2xs text-muted">
                   {verticalLabel(product.vertical)}
                 </span>
+                {product.category ? (
+                  <span className="rounded-pill bg-surface-2 px-2 py-0.5 text-2xs text-faint">
+                    {product.category}
+                  </span>
+                ) : null}
               </div>
             </div>
           </div>
+
+          {/* Image gallery */}
+          {gallery.length > 1 ? (
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {gallery.map((src, i) => (
+                <Thumbnail
+                  key={i}
+                  src={src}
+                  alt={product.imageAlts[i] || `${product.title} image ${i + 1}`}
+                  size={56}
+                  className="rounded-control"
+                />
+              ))}
+            </div>
+          ) : null}
 
           <div className="flex items-end justify-between rounded-card bg-surface-2 px-4 py-3">
             <div>
               <div className="flex items-baseline gap-2">
                 <span className="font-mono text-2xl font-semibold tabular text-ink">
-                  {formatPrice(product.price, product.currency)}
+                  {formatPriceRange(
+                    product.priceMin,
+                    product.priceMax,
+                    product.currency,
+                  )}
                 </span>
-                {discounted ? (
-                  <span className="font-mono text-sm tabular text-faint line-through">
-                    {formatPrice(product.originalPrice, product.currency)}
-                  </span>
-                ) : null}
               </div>
               {product.delta ? (
                 <div className="mt-1.5">
@@ -137,20 +166,36 @@ export function ProductDrawer({
                 </span>
               )}
             </div>
-            <AvailabilityPill value={product.availability} />
+            <AvailabilityPill value={product.status} />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Meta
-              icon={<Tag size={11} />}
-              label="SKU"
-              value={product.sku || '—'}
-            />
             <Meta
               icon={<Boxes size={11} />}
               label="Category"
               value={product.category || '—'}
             />
+            {product.materials ? (
+              <Meta
+                icon={<Layers size={11} />}
+                label="Materials"
+                value={product.materials}
+              />
+            ) : null}
+            {product.dimensions ? (
+              <Meta
+                icon={<Ruler size={11} />}
+                label="Dimensions"
+                value={product.dimensions}
+              />
+            ) : null}
+            {product.timeline ? (
+              <Meta
+                icon={<CalendarClock size={11} />}
+                label="Timeline"
+                value={product.timeline}
+              />
+            ) : null}
             <Meta
               icon={<Calendar size={11} />}
               label="First seen"
@@ -162,6 +207,35 @@ export function ProductDrawer({
               value={formatRelative(product.lastChanged)}
             />
           </div>
+
+          {product.description ? (
+            <div>
+              <h3 className="mb-1.5 text-xs font-semibold text-ink">
+                Description
+              </h3>
+              <p className="line-clamp-6 text-xs leading-relaxed text-muted">
+                {product.description}
+              </p>
+            </div>
+          ) : null}
+
+          {product.seoTitle || product.seoDescription ? (
+            <div className="rounded-control border border-border bg-surface-2/50 p-3">
+              <h3 className="mb-1 text-2xs font-semibold uppercase tracking-wide text-faint">
+                SEO metadata
+              </h3>
+              {product.seoTitle ? (
+                <p className="text-xs font-medium text-ink">
+                  {product.seoTitle}
+                </p>
+              ) : null}
+              {product.seoDescription ? (
+                <p className="mt-0.5 line-clamp-3 text-2xs text-muted">
+                  {product.seoDescription}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
 
           <a
             href={product.url}
@@ -207,9 +281,9 @@ export function ProductDrawer({
                           {formatPrice(h.price, product.currency)}
                         </td>
                         <td className="px-3 py-1.5 text-right text-muted">
-                          {h.availability === 'in_stock'
+                          {h.status === 'active'
                             ? 'In'
-                            : h.availability === 'out_of_stock'
+                            : h.status === 'out_of_stock'
                               ? 'Out'
                               : '—'}
                         </td>

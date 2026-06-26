@@ -19,7 +19,7 @@ import { EmptyState } from './ui/EmptyState';
 import { ProductDrawer } from './ProductDrawer';
 import { DownloadButton } from './DownloadButton';
 import type { PricePoint } from './PriceHistoryChart';
-import { cn, formatPrice, formatRelative } from '@/lib/format';
+import { cn, formatRelative, verticalLabel } from '@/lib/format';
 import type { Product } from '@/lib/types';
 
 type SortKey = 'title' | 'price' | 'lastChanged';
@@ -63,12 +63,12 @@ export function ProductsTable({
     const now = Date.now();
     const rows = products.filter((p) => {
       if (needle) {
-        const hay = `${p.title} ${p.sku} ${p.brand} ${p.category}`.toLowerCase();
+        const hay = `${p.title} ${p.shortTagline} ${p.category}`.toLowerCase();
         if (!hay.includes(needle)) return false;
       }
       if (srcSet.size && !srcSet.has(p.source)) return false;
       if (category !== 'all' && p.category !== category) return false;
-      if (availability !== 'all' && p.availability !== availability) return false;
+      if (availability !== 'all' && p.status !== availability) return false;
       if (changed24h) {
         const t = Date.parse(p.lastChanged);
         if (Number.isNaN(t) || now - t > DAY_MS) return false;
@@ -80,8 +80,8 @@ export function ProductsTable({
     rows.sort((a, b) => {
       if (sort.key === 'title') return a.title.localeCompare(b.title) * dir;
       if (sort.key === 'price') {
-        const av = a.price ?? Number.POSITIVE_INFINITY;
-        const bv = b.price ?? Number.POSITIVE_INFINITY;
+        const av = a.priceMin ?? Number.POSITIVE_INFINITY;
+        const bv = b.priceMin ?? Number.POSITIVE_INFINITY;
         return (av - bv) * dir;
       }
       return a.lastChanged.localeCompare(b.lastChanged) * dir;
@@ -126,7 +126,7 @@ export function ProductsTable({
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search products, SKU, brand…"
+            placeholder="Search products, tagline, category…"
             aria-label="Search products"
             className="h-9 w-full rounded-control border border-border bg-surface pl-9 pr-3 text-sm text-ink placeholder:text-faint focus:border-accent"
           />
@@ -159,7 +159,7 @@ export function ProductsTable({
           className="h-9 rounded-control border border-border bg-surface px-2.5 text-xs text-ink focus:border-accent"
         >
           <option value="all">Any stock</option>
-          <option value="in_stock">In stock</option>
+          <option value="active">In stock</option>
           <option value="out_of_stock">Out of stock</option>
         </select>
 
@@ -203,9 +203,6 @@ export function ProductsTable({
                   onClick={() => toggleSort('price')}
                   className="text-right"
                 />
-                <th className="px-4 py-2.5 text-right text-2xs font-medium uppercase tracking-wide">
-                  Original
-                </th>
                 <th className="px-4 py-2.5 text-left text-2xs font-medium uppercase tracking-wide">
                   Stock
                 </th>
@@ -220,77 +217,74 @@ export function ProductsTable({
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {pageRows.map((p) => {
-                const discounted =
-                  p.originalPrice != null &&
-                  p.price != null &&
-                  p.originalPrice > p.price;
-                return (
-                  <tr
-                    key={p.key}
-                    tabIndex={0}
-                    onClick={() => setActive(p)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') setActive(p);
-                    }}
-                    className="cursor-pointer transition-colors hover:bg-surface-2 focus:bg-surface-2 focus:outline-none"
-                  >
-                    <td className="py-2.5 pl-4 pr-0">
-                      <Thumbnail src={p.imageUrl} alt={p.title} size={40} />
-                    </td>
-                    <td className="px-4 py-2.5">
+              {pageRows.map((p) => (
+                <tr
+                  key={p.key}
+                  tabIndex={0}
+                  onClick={() => setActive(p)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') setActive(p);
+                  }}
+                  className="cursor-pointer transition-colors hover:bg-surface-2 focus:bg-surface-2 focus:outline-none"
+                >
+                  <td className="py-2.5 pl-4 pr-0">
+                    <Thumbnail src={p.images[0]} alt={p.title} size={40} />
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <p
+                      className="line-clamp-1 font-medium text-ink"
+                      title={p.title}
+                    >
+                      {p.title}
+                    </p>
+                    {p.shortTagline ? (
                       <p
-                        className="line-clamp-1 font-medium text-ink"
-                        title={p.title}
+                        className="mt-0.5 line-clamp-1 text-2xs text-muted"
+                        title={p.shortTagline}
                       >
-                        {p.title}
+                        {p.shortTagline}
                       </p>
-                      <div className="mt-1 flex items-center gap-2">
-                        <SourceBadge source={p.source} />
-                        {p.category ? (
-                          <span className="truncate text-2xs text-faint">
-                            {p.category}
-                          </span>
-                        ) : null}
-                      </div>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <PriceCell
-                        price={p.price}
-                        currency={p.currency}
-                        delta={p.delta}
-                      />
-                    </td>
-                    <td className="px-4 py-2.5 text-right">
-                      {discounted ? (
-                        <span className="font-mono text-xs tabular text-faint line-through">
-                          {formatPrice(p.originalPrice, p.currency)}
+                    ) : null}
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                      <SourceBadge source={p.source} />
+                      <span className="rounded-pill bg-surface-2 px-1.5 py-0.5 text-2xs text-muted">
+                        {verticalLabel(p.vertical)}
+                      </span>
+                      {p.category ? (
+                        <span className="max-w-[140px] truncate rounded-pill bg-surface-2 px-1.5 py-0.5 text-2xs text-faint">
+                          {p.category}
                         </span>
-                      ) : (
-                        <span className="text-faint">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <AvailabilityPill value={p.availability} />
-                    </td>
-                    <td className="px-4 py-2.5 text-right text-xs text-muted">
-                      {formatRelative(p.lastChanged)}
-                    </td>
-                    <td className="px-4 py-2.5 text-right">
-                      <a
-                        href={p.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        aria-label={`Open ${p.title} on store`}
-                        className="inline-flex text-faint hover:text-accent"
-                      >
-                        <ExternalLink size={15} />
-                      </a>
-                    </td>
-                  </tr>
-                );
-              })}
+                      ) : null}
+                    </div>
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <PriceCell
+                      price={p.priceMin}
+                      max={p.priceMax}
+                      currency={p.currency}
+                      delta={p.delta}
+                    />
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <AvailabilityPill value={p.status} />
+                  </td>
+                  <td className="px-4 py-2.5 text-right text-xs text-muted">
+                    {formatRelative(p.lastChanged)}
+                  </td>
+                  <td className="px-4 py-2.5 text-right">
+                    <a
+                      href={p.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      aria-label={`Open ${p.title} on store`}
+                      className="inline-flex text-faint hover:text-accent"
+                    >
+                      <ExternalLink size={15} />
+                    </a>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

@@ -15,14 +15,14 @@ const cfg = {
 describe('autoSource', () => {
   it('detects Shopify and delegates to the Shopify adapter', async () => {
     const products = await autoSource(cfg).scrape(fakeContext(shopifyFixture));
-    expect(products).toHaveLength(3); // 2 variants + 1 variant-less
-    expect(products.some((p) => p.externalId === '111:9001')).toBe(true);
+    expect(products).toHaveLength(2); // one row per product
+    expect(products.some((p) => p.externalId === '111')).toBe(true);
   });
 
   it('detects WooCommerce and delegates to the Woo adapter', async () => {
     const products = await autoSource(cfg).scrape(fakeContext(wooFixture));
     expect(products).toHaveLength(2);
-    expect(products.find((p) => p.externalId === '5')!.price).toBe(150);
+    expect(products.find((p) => p.externalId === '5')!.priceMin).toBe(150);
   });
 
   it('throws for a site with neither feed (recorded as failed, not fatal)', async () => {

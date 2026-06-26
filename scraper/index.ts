@@ -16,8 +16,11 @@ import {
   type RunStatus,
 } from './lib/merge';
 import { notify } from './lib/notify';
+import { enrichSeo, selectForEnrich } from './lib/enrich';
 import { closeBrowser } from './lib/browser';
 import { sources } from './sources';
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function main() {
   const env = loadEnv();
@@ -35,8 +38,8 @@ async function main() {
   const existingMap = new Map<string, ProductRow>();
   for (const raw of existingRows) {
     const p = rowToProduct(raw);
-    if (!p.source || !p.externalId) continue;
-    existingMap.set(productKey(p.source, p.externalId), p);
+    if (!p.sourceKey || !p.externalId) continue;
+    existingMap.set(productKey(p.sourceKey, p.externalId), p);
   }
   const merged = new Map<string, ProductRow>(existingMap);
 
@@ -58,6 +61,7 @@ async function main() {
 
   const historyRows: HistoryRow[] = [];
   const runRows: RunRow[] = [];
+  let totalEnriched = 0;
 
   // ── Per-source: isolated try/catch — one failure never aborts the rest ───
   for (const source of active) {
@@ -66,6 +70,7 @@ async function main() {
     let newCount = 0;
     let changedCount = 0;
     let dropped = 0;
+    let enriched = 0;
     let status: RunStatus = 'ok';
     let error = '';
 
@@ -73,6 +78,22 @@ async function main() {
       const ctx = createContext(source);
       const scraped = await source.scrape(ctx);
       found = scraped.length;
+
+      // ── Optional enrichment pass (opt-in, capped) ──────────────────────────
+      // Fetches one HTML page per selected product to fill seoTitle/Description.
+      // Run sequentially with an extra delay so it stays polite.
+      if (env.ENRICH !== 'off') {
+        const targets = selectForEnrich(scraped, env.ENRICH);
+        for (const p of targets) {
+          await enrichSeo(ctx, p);
+          if (env.ENRICH_DELAY_MS > 0) await sleep(env.ENRICH_DELAY_MS);
+        }
+        if (targets.length) {
+          enriched = targets.length;
+          totalEnriched += enriched;
+          ctx.log(`[${source.key}] enriched ${enriched} product(s)`);
+        }
+      }
 
       for (const raw of scraped) {
         const norm = normalizeProduct(source.baseUrl, raw, ctx.log);
@@ -84,7 +105,7 @@ async function main() {
         const { row, changed, isNew, history } = diffProduct(
           existingMap.get(key),
           norm,
-          { source: source.key, vertical: source.vertical },
+          { sourceKey: source.key, vertical: source.vertical },
           now,
         );
         merged.set(key, row);
@@ -96,7 +117,8 @@ async function main() {
       if (dropped > 0) status = 'partial';
       console.log(
         `✓ ${source.key}: ${found} found, ${newCount} new, ${changedCount} changed` +
-          (dropped ? `, ${dropped} dropped` : ''),
+          (dropped ? `, ${dropped} dropped` : '') +
+          (enriched ? `, ${enriched} enriched` : ''),
       );
     } catch (err) {
       status = 'failed';
@@ -119,9 +141,9 @@ async function main() {
   // ── Write back: whole-tab overwrite for Products, append for the logs ────
   const productRows = [...merged.values()]
     .sort((a, b) =>
-      a.source === b.source
+      a.sourceKey === b.sourceKey
         ? a.externalId.localeCompare(b.externalId)
-        : a.source.localeCompare(b.source),
+        : a.sourceKey.localeCompare(b.sourceKey),
     )
     .map(productToRow);
 
@@ -140,6 +162,7 @@ async function main() {
   console.log(
     `\nDone. Products in store: ${merged.size}. ` +
       `History rows added: ${historyRows.length}. ` +
+      (totalEnriched ? `Enriched: ${totalEnriched}. ` : '') +
       `Sources: ${runRows.length - failed} ok/partial, ${failed} failed.`,
   );
 

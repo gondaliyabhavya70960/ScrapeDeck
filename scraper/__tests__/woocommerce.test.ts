@@ -14,18 +14,29 @@ describe('wooSource', () => {
   it('converts minor units to rupee amounts (15000 / 10^2 = 150)', async () => {
     const products = await adapter.scrape(fakeContext(fixture));
     const kit = products.find((p) => p.externalId === '5')!;
-    expect(kit.price).toBe(150);
-    expect(kit.originalPrice).toBe(200);
+    expect(kit.priceMin).toBe(150);
+    expect(kit.priceMax).toBe(150);
     expect(kit.currency).toBe('INR');
-    expect(kit.availability).toBe('in_stock');
+    expect(kit.status).toBe('active');
     expect(kit.category).toBe('Kits');
+    expect(kit.slug).toBe('resin-art-kit');
+    expect(kit.shortTagline).toBe('Everything to start.');
   });
 
-  it('maps is_in_stock=false to out_of_stock', async () => {
+  it('maps attributes into materials / dimensions / fields', async () => {
+    const products = await adapter.scrape(fakeContext(fixture));
+    const kit = products.find((p) => p.externalId === '5')!;
+    expect(kit.materials).toBe('Epoxy');
+    expect(kit.dimensions).toBe('A4');
+    expect(kit.fields?.Material).toBe('Epoxy');
+  });
+
+  it('reads a price_range into priceMin/priceMax and maps out_of_stock', async () => {
     const products = await adapter.scrape(fakeContext(fixture));
     const paste = products.find((p) => p.externalId === '6')!;
-    expect(paste.price).toBe(500);
-    expect(paste.availability).toBe('out_of_stock');
+    expect(paste.priceMin).toBe(500);
+    expect(paste.priceMax).toBe(800);
+    expect(paste.status).toBe('out_of_stock');
   });
 
   it('emits one row per product', async () => {

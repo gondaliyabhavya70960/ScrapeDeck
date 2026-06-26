@@ -29,19 +29,25 @@ branch and no Vercel rebuild on each scrape.
 
 ---
 
-## Seed sources (verified)
+## Sources
 
-| Key | Store | Platform | How it's scraped |
-| --- | --- | --- | --- |
-| `tulsiresin` | Tulsi Resin | Shopify | `GET /products.json?limit=250&page=N` |
-| `resin24` | Resin24 | Shopify | `GET /products.json?limit=250&page=N` |
-| `resinstoresurat` | Resin Store Surat | Shopify | `GET /products.json?limit=250&page=N` |
-| `rabh` | RABH | Shopify | `GET /products.json?limit=250&page=N` |
-| `canvasbypriya` | Canvas by Priya | WooCommerce | `GET /wp-json/wc/store/v1/products?per_page=100&page=N` |
+Every source uses the exact adapter for its platform, verified by live
+fingerprint (Shopify `/products.json` or the WooCommerce Store API).
+**Supply‑only** stores (raw materials / kits, not finished gift products) ship
+`enabled: false` — flip them on in `scraper/sources/index.ts` to track their
+pricing too.
 
-Shopify variants are stored as separate rows (`productId:variantId`) for precise
-per‑variant price tracking. WooCommerce prices arrive in **minor units**
-(`15000` with `currency_minor_unit: 2` → ₹150.00) and are converted on read.
+| Vertical | Shopify | WooCommerce |
+| --- | --- | --- |
+| **Resin** | resin24, resinstoresurat, rabh, classyartz, pacificresinart, craftpriyaa, confettigifts, thunderwood, hyperiwood, seawavetable<br>_supply (off):_ tulsiresin, letsresin, justresin, totalboat | canvasbypriya, sumaiyaresin, resinartsjaipur, kanhakreation, banteybanatey, resinartstudio, angroos |
+| **3D‑print** | thesculptstudios, be3dprintshop | igstore, 3dzone, think3d<br>_supply (off):_ wol3d |
+
+ScrapeDeck stores **one row per product** (not per variant): the rich schema
+carries `priceMin`/`priceMax`, so a product's whole variant span is a single row.
+WooCommerce prices arrive in **minor units** (`15000` with
+`currency_minor_unit: 2` → ₹150.00) and are converted on read. Custom‑HTML / Wix
+/ Squarespace / marketplace sites have no turnkey JSON feed and are **not**
+registered — see [Excluded & template‑only sites](#excluded--template-only-sites).
 
 ---
 
@@ -53,7 +59,7 @@ pnpm install
 # Fast smoke test — one store (~22 products) straight into the Sheet:
 ONLY=rabh pnpm scrape
 
-# Full run (all five sources):
+# Full run (all enabled sources):
 pnpm scrape
 
 # Dashboard:
@@ -139,7 +145,8 @@ is logged `failed`, the rest still write, and the job only exits non‑zero if
 
 The five views: **Overview** (stats, recent changes, 7‑day movement, source
 health) · **Products** (the primary table — search, vertical/source/category/
-availability filters, sortable, drawer with price‑history chart) · **Changes**
+stock filters, sortable, drawer with image gallery, description, materials/
+dimensions, SEO metadata & price‑history chart) · **Changes**
 (price/stock transitions grouped by day) · **Runs** (per‑run status) · plus the
 **product detail drawer**. Every view has loading, empty, and error states.
 
@@ -220,21 +227,79 @@ interface, so the orchestrator is backend‑agnostic):
 
 ## Data model
 
-**Products** (current state, whole‑tab overwrite each run):
-`source · vertical · externalId · title · brand · sku · category · currency ·
-price · originalPrice · availability · imageUrl · url · firstSeen · lastSeen ·
-lastChanged · contentHash`
+**Products** (current state, whole‑tab overwrite each run) — the 20‑field rich
+schema, one row per product:
+`sourceKey · vertical · externalId · title · slug · category · shortTagline ·
+description · priceMin · priceMax · currency · showPrice · timeline · materials ·
+dimensions · status · featured · images · imageAlts · fields · seoTitle ·
+seoDescription · url · firstSeen · lastSeen · lastChanged · contentHash`
+
+`images`/`imageAlts` are joined with ` | `; `fields` is JSON; booleans are
+`TRUE`/`FALSE`; empty cells for anything a source doesn't publish.
 
 **PriceHistory** (append‑only; one row each time a product's `contentHash`
-changes): `timestamp · source · externalId · title · currency · price ·
-originalPrice · availability`
+changes): `timestamp · sourceKey · externalId · title · currency · priceMin ·
+priceMax · status`
 
 **Runs** (append‑only; one row per source per run): `timestamp · source ·
 status · found · new · changed · durationMs · error`
 
-`contentHash` covers **only** change‑relevant fields (title, price,
-originalPrice, availability, imageUrl), so re‑running with no real change adds no
-history. `firstSeen` and `vertical` are preserved across runs.
+`contentHash` covers **only** change‑relevant fields (`title`, `priceMin`,
+`priceMax`, `status`, and the image set), so description / SEO churn that doesn't
+touch price or stock adds **no** spurious history. `firstSeen` and `vertical` are
+preserved across runs.
+
+### Field coverage
+
+Competitors publish only what their platform exposes; everything else stays empty
+(we never invent your taxonomy). What maps where:
+
+| Field | Shopify | WooCommerce | Source |
+| --- | --- | --- | --- |
+| title, slug, category, description, priceMin/Max, showPrice, images, status | ✓ | ✓ | list API |
+| imageAlts | ◑ often empty | ◑ | list API |
+| shortTagline | ✗ (enrich) | ✓ `short_description` | Woo native / enrichment |
+| materials, dimensions | ✗ | ◑ via `attributes` | Woo attributes |
+| fields | vendor + type + tags | attributes | platform metadata |
+| featured | ◑ "featured" tag heuristic | ✗ | derived |
+| timeline | ✗ | ✗ | not published |
+| seoTitle, seoDescription | ✗ → enrichment | ✗ → enrichment | product‑page `<title>` + meta |
+
+### Enrichment (optional, opt‑in)
+
+`seoTitle` / `seoDescription` aren't in either list API, so filling them means
+fetching **one HTML page per product** — thousands of requests across the full
+registry. It is therefore **off by default** and capped. Controls (env):
+
+| Var | Default | Values |
+| --- | --- | --- |
+| `ENRICH` | `off` | `off` · `all` · `featured` · `<number>` (cap per source) |
+| `ENRICH_DELAY_MS` | `800` | extra politeness delay between enrichment fetches (ms) |
+
+Enrichment runs **sequentially** through the per‑source rate limiter with the
+extra delay, lifts `<title>` / `meta[name=description]` / `og:*` into the SEO
+fields (plus a first‑sentence `shortTagline` and `og:image` fallback), and logs
+how many were enriched. Use it for a one‑time deep pull or only for `featured`
+items — never blindly across every product.
+
+### Excluded & template‑only sites
+
+Some analysed competitors have **no turnkey JSON feed** and aren't registered.
+Two buckets:
+
+- **Needs a browser / bespoke adapter** — Wix (`designbyjulia`, `moonkusserart`),
+  Squarespace (`oliveartz`), and custom carts (`prestogifts`, `3dostic`,
+  `krupalikanjiyaarts`, `priartgifts`, `fracktal`, `glasscast`). Run
+  `pnpm add-source <url>` once they respond, then copy `_template-http.ts`
+  (cheerio) or `_template-browser.ts` (Playwright; set repo var
+  `USE_BROWSER=true`) and fill the selectors. `thesculptstudios` is registered as
+  Shopify but blocks the `products.json` probe (HTTP 402) — a browser adapter can
+  still reach it.
+- **Don't scrape (ToS / no catalogue)** — marketplaces (Amazon.in, Etsy,
+  IndiaMART, TradeIndia) → use their **official APIs** or enter manually; model
+  libraries (MakerWorld, Printables, Cults3D) → STL files, not products;
+  social / link‑in‑bio storefronts and US‑only shops (Uncommon Goods) → out of
+  scope.
 
 ---
 

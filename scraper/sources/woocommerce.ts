@@ -1,26 +1,42 @@
 import type { SourceAdapter, ScrapedProduct, ScrapeContext } from '../types';
+import { stripHtml } from '../lib/normalize';
 
-interface WooImage {
+interface WImage {
   src: string;
+  alt: string | null;
 }
-interface WooCategory {
+interface WCat {
   name: string;
 }
-interface WooPrices {
+interface WTerm {
+  name: string;
+}
+interface WAttr {
+  name: string;
+  terms: WTerm[];
+}
+interface WRange {
+  min_amount: string;
+  max_amount: string;
+}
+interface WPrices {
   price: string;
   regular_price: string;
-  sale_price: string;
   currency_code: string;
   currency_minor_unit: number;
+  price_range: WRange | null;
 }
-interface WooProduct {
+interface WProduct {
   id: number;
   name: string;
+  slug: string;
   permalink: string;
-  sku: string;
-  prices: WooPrices;
-  images: WooImage[];
-  categories: WooCategory[];
+  short_description: string;
+  description: string;
+  prices: WPrices;
+  images: WImage[];
+  categories: WCat[];
+  attributes: WAttr[];
   is_in_stock: boolean;
 }
 
@@ -32,11 +48,12 @@ export function wooSource(cfg: {
   enabled?: boolean;
 }): SourceAdapter {
   const base = cfg.baseUrl.replace(/\/+$/, '');
+  const vertical = cfg.vertical ?? 'resin';
   return {
     key: cfg.key,
     name: cfg.name,
     baseUrl: base,
-    vertical: cfg.vertical ?? 'resin',
+    vertical,
     enabled: cfg.enabled ?? true,
     mode: 'http',
     async scrape(ctx: ScrapeContext): Promise<ScrapedProduct[]> {
@@ -44,25 +61,57 @@ export function wooSource(cfg: {
       const PER_PAGE = 100,
         MAX_PAGES = 200;
       for (let page = 1; page <= MAX_PAGES; page++) {
-        const url = `${base}/wp-json/wc/store/v1/products?per_page=${PER_PAGE}&page=${page}`;
-        const products = await ctx.limit(() => ctx.getJson<WooProduct[]>(url));
+        const products = await ctx.limit(() =>
+          ctx.getJson<WProduct[]>(
+            `${base}/wp-json/wc/store/v1/products?per_page=${PER_PAGE}&page=${page}`,
+          ),
+        );
         if (!Array.isArray(products) || products.length === 0) break;
         for (const p of products) {
-          const minor = p.prices?.currency_minor_unit ?? 2; // prices are in MINOR units (15000 → ₹150.00)
+          const minor = p.prices?.currency_minor_unit ?? 2;
           const div = Math.pow(10, minor);
           const amt = (s?: string) =>
             s != null && s !== '' ? Number(s) / div : undefined;
+          let priceMin: number | undefined, priceMax: number | undefined;
+          if (p.prices?.price_range) {
+            priceMin = amt(p.prices.price_range.min_amount);
+            priceMax = amt(p.prices.price_range.max_amount);
+          } else {
+            priceMin = priceMax = amt(p.prices?.price);
+          }
+
+          const fields: Record<string, string> = {};
+          let materials: string | undefined, dimensions: string | undefined;
+          for (const a of p.attributes ?? []) {
+            const val = (a.terms ?? []).map((t) => t.name).join(', ');
+            if (a.name) fields[a.name] = val;
+            if (/material/i.test(a.name)) materials = val;
+            if (/(dimension|size)/i.test(a.name)) dimensions = val;
+          }
+
           out.push({
             externalId: String(p.id),
             url: p.permalink,
-            title: p.name,
-            sku: p.sku || undefined,
-            category: p.categories?.[0]?.name || undefined,
-            imageUrl: p.images?.[0]?.src || undefined,
+            vertical,
             currency: p.prices?.currency_code || 'INR',
-            price: amt(p.prices?.price),
-            originalPrice: amt(p.prices?.regular_price),
-            availability: p.is_in_stock ? 'in_stock' : 'out_of_stock',
+            title: p.name,
+            slug: p.slug,
+            category: p.categories?.[0]?.name || undefined,
+            shortTagline: stripHtml(p.short_description) || undefined,
+            description: stripHtml(p.description) || undefined,
+            priceMin,
+            priceMax,
+            showPrice: priceMin != null && priceMin > 0,
+            status: p.is_in_stock ? 'active' : 'out_of_stock',
+            featured: false,
+            images: (p.images ?? []).map((i) => i.src),
+            imageAlts: (p.images ?? []).map((i) => i.alt ?? ''),
+            fields,
+            materials,
+            dimensions,
+            timeline: undefined,
+            seoTitle: undefined,
+            seoDescription: undefined,
           });
         }
         ctx.log(`[${cfg.key}] page ${page}: ${products.length}`);

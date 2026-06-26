@@ -7,18 +7,23 @@ import {
 } from '../lib/merge';
 import { contentHashOf, type NormalizedProduct } from '../lib/normalize';
 
-const META = { source: 'rabh', vertical: 'resin' };
+const META = { sourceKey: 'rabh', vertical: 'resin' };
 
 function mk(overrides: Partial<NormalizedProduct> = {}): NormalizedProduct {
   const base = {
     externalId: '1',
     url: 'https://www.rabh.in/products/p1',
     title: 'Resin 1kg',
-    imageUrl: 'https://www.rabh.in/img/p1.jpg',
+    slug: 'p1',
+    images: ['https://www.rabh.in/img/p1.jpg'],
+    imageAlts: [] as string[],
+    fields: { vendor: 'RABH' },
     currency: 'INR',
-    price: 100,
-    originalPrice: undefined as number | undefined,
-    availability: 'in_stock',
+    priceMin: 100 as number | undefined,
+    priceMax: 100 as number | undefined,
+    status: 'active',
+    showPrice: true,
+    featured: false,
     ...overrides,
   };
   return {
@@ -37,6 +42,7 @@ describe('diffProduct', () => {
     expect(r.row.lastSeen).toBe('t1');
     expect(r.row.lastChanged).toBe('t1');
     expect(r.row.vertical).toBe('resin');
+    expect(r.row.sourceKey).toBe('rabh');
   });
 
   it('is idempotent: re-scraping unchanged data writes no history', () => {
@@ -52,11 +58,16 @@ describe('diffProduct', () => {
   });
 
   it('records a change (and history) when the price moves', () => {
-    const first = diffProduct(undefined, mk({ price: 100 }), META, 't1');
-    const moved = diffProduct(first.row, mk({ price: 120 }), META, 't3');
+    const first = diffProduct(undefined, mk({ priceMin: 100, priceMax: 100 }), META, 't1');
+    const moved = diffProduct(
+      first.row,
+      mk({ priceMin: 120, priceMax: 120 }),
+      META,
+      't3',
+    );
     expect(moved.changed).toBe(true);
     expect(moved.history).toBeDefined();
-    expect(moved.history!.price).toBe(120);
+    expect(moved.history!.priceMin).toBe(120);
     expect(moved.row.lastChanged).toBe('t3');
     expect(moved.row.firstSeen).toBe('t1'); // preserved across the change
   });
@@ -64,17 +75,26 @@ describe('diffProduct', () => {
 
 describe('row (de)serialization', () => {
   it('round-trips a ProductRow through the sheet representation', () => {
-    const { row } = diffProduct(undefined, mk({ price: 1999.5 }), META, 't1');
+    const { row } = diffProduct(
+      undefined,
+      mk({ priceMin: 1999.5, priceMax: 2999 }),
+      META,
+      't1',
+    );
     const serialized = productToRow(row).map(String);
     const parsed = rowToProduct(serialized);
-    expect(parsed.source).toBe('rabh');
+    expect(parsed.sourceKey).toBe('rabh');
     expect(parsed.externalId).toBe('1');
-    expect(parsed.price).toBe(1999.5);
-    expect(parsed.availability).toBe('in_stock');
+    expect(parsed.priceMin).toBe(1999.5);
+    expect(parsed.priceMax).toBe(2999);
+    expect(parsed.status).toBe('active');
+    expect(parsed.showPrice).toBe(true);
+    expect(parsed.images).toEqual(['https://www.rabh.in/img/p1.jpg']);
+    expect(parsed.fields).toEqual({ vendor: 'RABH' });
     expect(parsed.contentHash).toBe(row.contentHash);
   });
 
   it('builds the composite product key', () => {
-    expect(productKey('rabh', '111:222')).toBe('rabh|111:222');
+    expect(productKey('rabh', '111')).toBe('rabh|111');
   });
 });
